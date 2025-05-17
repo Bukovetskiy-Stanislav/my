@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мої Фінанси</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    header {
+      background: #1f2937;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    nav {
+      display: flex;
+      justify-content: space-around;
+      background: #374151;
+      padding: 0.5rem 0;
+    }
+    nav button {
+      background: none;
+      color: white;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .container {
+      max-width: 600px;
+      margin: 1rem auto;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    input, select, button {
+      width: 50%;  /* Зменшений розмір кнопок по горизонталі */
+      padding: 0.75rem;
+      margin: 0.5rem 0;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+    }
+    button.submit-income {
+      background-color: #10B981; /* зелений для доходу */
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.submit-expense {
+      background-color: #EF4444; /* червоний для витрат */
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    h2, h3 {
+      margin-top: 1rem;
+    }
+    .summary {
+      background: #e5e7eb;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    .entry-list {
+      margin-top: 1rem;
+    }
+    .entry {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 0.5rem 0;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Мої Фінанси</h1>
+  </header>
+  <nav>
+    <button onclick="showTab('main')">🏠 Головна</button>
+    <button onclick="showTab('journal')">📔 Журнал</button>
+    <button onclick="showTab('exchange')">💱 Обмін</button>
+  </nav>
+
+  <div class="container" id="main">
+    <h2>Додати дохід</h2>
+    <input type="number" id="income-amount" placeholder="Сума (CZK)">
+    <button class="submit-income" onclick="addIncome()">Додати</button>
+
+    <h2>Додати витрату на автомобіль</h2>
+    <input type="number" id="auto-expense-amount" placeholder="Сума (CZK)">
+    <select id="auto-expense-category">
+      <option value="Пальне">Пальне</option>
+      <option value="Обслуговування авто">Обслуговування авто</option>
+      <option value="Страхування авто">Страхування авто</option>
+      <option value="Інше">Інше</option>
+    </select>
+    <button class="submit-expense" onclick="addAutoExpense()">Додати</button>
+
+    <h2>Додати витрату на себе</h2>
+    <input type="number" id="personal-expense-amount" placeholder="Сума (CZK)">
+    <select id="personal-expense-category">
+      <option value="Оренда житла">Оренда житла</option>
+      <option value="Харчування">Харчування</option>
+      <option value="Медичне страхування">Медичне страхування</option>
+      <option value="Мобільна мережа">Мобільна мережа</option>
+      <option value="Одяг">Одяг</option>
+      <option value="Інше">Інше</option>
+    </select>
+    <button class="submit-expense" onclick="addPersonalExpense()">Додати</button>
+
+    <h2>Підсумки</h2>
+    <div class="summary">
+      <p>Загальний дохід: <strong id="total-income">0</strong> CZK</p>
+      <p>Загальні витрати: <strong id="total-expenses">0</strong> CZK</p>
+      <p>Прибуток: <strong id="net-profit">0</strong> CZK</p>
+      <p>💶 Баланс в EUR: <strong id="euro-balance">0</strong> EUR</p>
+      <p>💵 Баланс в USD: <strong id="usd-balance">0</strong> USD</p>
+    </div>
+  </div>
+
+  <div class="container hidden" id="journal">
+    <h2>Журнал доходів і витрат</h2>
+    <div class="entry-list" id="entry-list"></div>
+  </div>
+
+  <div class="container hidden" id="exchange">
+    <h2>Обмін валюти</h2>
+    <input type="number" id="czk-amount" placeholder="Сума в CZK">
+    <input type="number" id="rate" placeholder="Курс (CZK за 1 EUR/USD)">
+    <select id="currency">
+      <option value="EUR">Євро 💶</option>
+      <option value="USD">Долар 💵</option>
+    </select>
+    <button class="submit-expense" onclick="convertCurrency()">Обміняти</button>
+    <p id="converted-result"></p>
+  </div>
+
+  <script>
+    let income = 0;
+    let expenses = [];
+    let journal = [];
+    let balances = { EUR: 0, USD: 0 };
+
+    // Завантажуємо дані з LocalStorage
+    function loadData() {
+      const storedData = JSON.parse(localStorage.getItem('financeData'));
+      if (storedData) {
+        income = storedData.income || 0;
+        expenses = storedData.expenses || [];
+        journal = storedData.journal || [];
+        balances = storedData.balances || { EUR: 0, USD: 0 };
+      }
+    }
+
+    // Зберігаємо дані в LocalStorage
+    function saveData() {
+      const data = { income, expenses, journal, balances };
+      localStorage.setItem('financeData', JSON.stringify(data));
+    }
+
+    // Форматуємо дату
+    function formatDate(date) {
+      return date.toLocaleString('uk-UA', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    // Оновлюємо відображення
+    function updateDisplay() {
+      const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
+      const profit = income - totalExpenses;
+
+      document.getElementById('total-income').textContent = income.toFixed(2);
+      document.getElementById('total-expenses').textContent = totalExpenses.toFixed(2);
+      document.getElementById('net-profit').textContent = profit.toFixed(2);
+      document.getElementById('euro-balance').textContent = balances.EUR.toFixed(2);
+      document.getElementById('usd-balance').textContent = balances.USD.toFixed(2);
+
+      const entryList = document.getElementById('entry-list');
+      entryList.innerHTML = '';
+      journal.slice().reverse().forEach(entry => {
+        const div = document.createElement('div');
+        div.className = 'entry';
+        div.textContent = `${formatDate(entry.date)} - ${entry.type} ${entry.category ? '(' + entry.category + ')' : ''}: ${entry.amount.toFixed(2)} ${entry.currency || 'CZK'}`;
+        entryList.appendChild(div);
+      });
+    }
+
+    // Додати дохід
+    function addIncome() {
+      const amount = parseFloat(document.getElementById('income-amount').value);
+      if (!isNaN(amount) && amount > 0) {
+        income += amount;
+        journal.push({ type: 'Дохід', amount, date: new Date(), currency: 'CZK' });
+        document.getElementById('income-amount').value = '';
+        saveData();
+        updateDisplay();
+      }
+    }
+
+    // Додати витрату на автомобіль
+    function addAutoExpense() {
+      const amount = parseFloat(document.getElementById('auto-expense-amount').value);
+      const category = document.getElementById('auto-expense-category').value;
+      if (!isNaN(amount) && amount > 0) {
+        expenses.push({ amount, category });
+        journal.push({ type: 'Витрата', amount, category, date: new Date(), currency: 'CZK' });
+        document.getElementById('auto-expense-amount').value = '';
+        saveData();
+        updateDisplay();
+      }
+    }
+
+    // Додати витрату на себе
+    function addPersonalExpense() {
+      const amount = parseFloat(document.getElementById('personal-expense-amount').value);
+      const category = document.getElementById('personal-expense-category').value;
+      if (!isNaN(amount) && amount > 0) {
+        expenses.push({ amount, category });
+        journal.push({ type: 'Витрата', amount, category, date: new Date(), currency: 'CZK' });
+        document.getElementById('personal-expense-amount').value = '';
+        saveData();
+        updateDisplay();
+      }
+    }
+
+    // Конвертація валюти
+    function convertCurrency() {
+      const czkAmount = parseFloat(document.getElementById('czk-amount').value);
+      const rate = parseFloat(document.getElementById('rate').value);
+      const currency = document.getElementById('currency').value;
+
+      if (!isNaN(czkAmount) && czkAmount > 0 && !isNaN(rate) && rate > 0) {
+        const result = czkAmount / rate;
+        balances[currency] += result;
+        expenses.push({ amount: czkAmount, category: `Обмін у ${currency}` });
+        journal.push({ type: 'Обмін', amount: result, category: `з ${czkAmount} CZK`, date: new Date(), currency });
+        document.getElementById('converted-result').textContent = `≈ ${result.toFixed(2)} ${currency}`;
+        document.getElementById('czk-amount').value = '';
+        document.getElementById('rate').value = '';
+        saveData();
+        updateDisplay();
+      } else {
+        document.getElementById('converted-result').textContent = 'Введіть коректні дані';
+      }
+    }
+
+    // Показати вибрану вкладку
+    function showTab(tabId) {
+      document.getElementById('main').classList.add('hidden');
+      document.getElementById('journal').classList.add('hidden');
+      document.getElementById('exchange').classList.add('hidden');
+      document.getElementById(tabId).classList.remove('hidden');
+    }
+
+    // Показати головну вкладку після завантаження сторінки
+    document.addEventListener('DOMContentLoaded', () => {
+      loadData();  // Завантажуємо збережені дані
+      showTab('main');
+      updateDisplay();
+    });
+  </script>
+</body>
+</html>
